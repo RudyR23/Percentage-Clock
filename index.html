@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>The (True) Percentage Clock</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --clock-size: 3.5em;         /* start slightly larger */
+      --clock-color: cyan;
+      --border-color: #ddd;
+      --border-width: 4px;
+      --unit-padding-y: 6px;
+      --unit-padding-x: 12px;
+      --radius: 14px;
+      --glow: none;
+      --bar-height: 5px;
+      --pulse-speed: 2s;           /* default pulse speed */
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: black;
+      color: var(--clock-color);
+      font-family: 'Space Grotesk', sans-serif;
+      text-align: center;
+      margin: 3% 0 0;
+      overflow: hidden;
+    }
+
+    h1 { color: var(--clock-color); font-size: 2rem; margin-bottom: 0.2em; }
+    p.tagline { color: var(--border-color); font-size: 1rem; margin: 0.3em 0 0.8em; font-style: italic; }
+
+    .clock-stack { display: flex; flex-direction: column; align-items: center; }
+    .clock-wrap {
+      display: inline-flex;
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius);
+      background: #111;
+      margin-bottom: 20px; /* spacing between clocks */
+      overflow: hidden;
+      box-shadow: var(--glow);
+      justify-content: center;
+      width: auto;
+      max-width: max-content;
+    }
+
+    .unit-container { display: flex; flex-direction: column; align-items: stretch; border-left: var(--border-width) solid var(--border-color); flex: 0 0 auto; }
+    .unit-container:first-child { border-left: none; }
+    .unit { font-family: 'DM Mono', monospace; font-size: var(--clock-size); line-height: 1; padding: var(--unit-padding-y) var(--unit-padding-x); color: var(--clock-color); text-align: center; white-space: nowrap; }
+
+    .progress-bar { height: var(--bar-height); background: var(--border-color); border: 1px solid black; width: 100%; }
+    .progress-fill { height: 100%; background: var(--clock-color); width: 0%; transition: width 0.1s linear; }
+
+    p.subtext { color: #aaa; font-size: 0.9rem; margin: 6px auto 0.6em; max-width: 600px; line-height: 1.35; white-space: pre-line; padding: 0 12px; }
+
+    .options, .timezone-options {
+      position: fixed; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 6px;
+      background: #111; border: var(--border-width) solid var(--border-color);
+      border-radius: 8px; padding: 8px; max-width: 150px; width: 150px; font-size: 0.8rem;
+    }
+    .options { right: 40px; }
+    .timezone-options { left: 40px; }
+
+    .swatch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1px solid #333; }
+    .cyan{background:cyan}.lime{background:lime}.amber{background:#ffbf00}.red{background:#ff5555}.blue{background:#3399ff}.purple{background:#9933ff}.pink{background:#ff66cc}.teal{background:#00cccc}.orange{background:#ff6600}.white{background:#f0f0f0}.gray{background:#888}.green{background:#33cc33}
+
+    .size-controls { display: flex; justify-content: space-between; gap: 6px; }
+    .size-controls button { flex: 1; }
+
+    button { font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; padding: 4px 6px; background: #222; border: 1px solid #444; color: #ddd; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #333; }
+
+    .slider-wrap { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+    .slider-wrap input[type="range"] { width: 100%; accent-color: var(--clock-color); }
+
+    footer { margin-top: 12px; color: #777; font-size: 0.8rem; font-family: 'Space Grotesk', sans-serif; }
+    footer div { margin: 2px 0; }
+
+    @keyframes pulseGlow {
+      0%   { box-shadow: 0 0 6px var(--clock-color), 0 0 12px var(--clock-color); }
+      50%  { box-shadow: 0 0 14px var(--clock-color), 0 0 28px var(--clock-color); }
+      100% { box-shadow: 0 0 6px var(--clock-color), 0 0 12px var(--clock-color); }
+    }
+    .pulsing { animation: pulseGlow var(--pulse-speed) infinite; }
+  </style>
+</head>
+<body>
+  <h1>The (True) Percentage Clock</h1>
+  <p class="tagline">See time unfold as percentages – Days:Hours:Minutes</p>
+
+  <!-- Clocks -->
+  <div class="clock-stack">
+    <div id="clock" class="clock-wrap">Loading...</div>
+    <div id="realClock" class="clock-wrap" style="display:none;">Loading...</div>
+  </div>
+
+  <!-- Left timezone options -->
+  <div class="timezone-options">
+    <button onclick="setTimezone('local')">My Timezone</button>
+    <div class="timezone-list">
+      <button onclick="setTimezone('America/Los_Angeles')">Los Angeles</button>
+      <button onclick="setTimezone('America/Denver')">Denver</button>
+      <button onclick="setTimezone('America/Chicago')">Chicago</button>
+      <button onclick="setTimezone('America/New_York')">New York</button>
+      <button onclick="setTimezone('America/Sao_Paulo')">São Paulo</button>
+      <button onclick="setTimezone('Europe/London')">London</button>
+      <button onclick="setTimezone('Europe/Berlin')">Berlin</button>
+      <button onclick="setTimezone('Europe/Istanbul')">Istanbul</button>
+      <button onclick="setTimezone('Asia/Dubai')">Dubai</button>
+      <button onclick="setTimezone('Asia/Tokyo')">Tokyo</button>
+      <button onclick="setTimezone('Australia/Sydney')">Sydney</button>
+    </div>
+  </div>
+
+  <!-- Right appearance options -->
+  <div class="options">
+    <div class="swatch-grid">
+      <div class="swatch cyan"   onclick="setColor('cyan')"></div>
+      <div class="swatch lime"   onclick="setColor('lime')"></div>
+      <div class="swatch amber"  onclick="setColor('#ffbf00')"></div>
+      <div class="swatch red"    onclick="setColor('#ff5555')"></div>
+      <div class="swatch blue"   onclick="setColor('#3399ff')"></div>
+      <div class="swatch purple" onclick="setColor('#9933ff')"></div>
+      <div class="swatch pink"   onclick="setColor('#ff66cc')"></div>
+      <div class="swatch teal"   onclick="setColor('#00cccc')"></div>
+      <div class="swatch orange" onclick="setColor('#ff6600')"></div>
+      <div class="swatch white"  onclick="setColor('#f0f0f0')"></div>
+      <div class="swatch gray"   onclick="setColor('#888888')"></div>
+      <div class="swatch green"  onclick="setColor('#33cc33')"></div>
+    </div>
+
+    <div class="size-controls">
+      <button onclick="nudgeSize(-0.5)">−</button>
+      <button onclick="nudgeSize(0.5)">+</button>
+    </div>
+
+    <button onclick="toggleSeconds()">Toggle Seconds</button>
+    <button onclick="toggleRealTime()">Compare to real time</button>
+    <button onclick="toggleBars()">Toggle Progress Bars</button>
+
+    <button onclick="toggleGlow()">Toggle Neon Glow</button>
+    <div class="slider-wrap">
+      <input id="pulseSpeed" type="range" min="0.5" max="5" step="0.5" value="2"
+             oninput="setPulseSpeed(this.value)" />
+    </div>
+  </div>
+
+  <!-- Description -->
+  <p class="subtext">
+The (True) Percentage Clock was born from the idea of the original percentage clock which simply displayed how far through the day you were as a single percentage.
+
+I wanted to expand on that concept by showing how far through the hours and minutes you are, too.
+
+Each day starts at 00.0 00.0 00.0 and ends at 99.9 99.9 99.9.
+12 noon, for example, would read as 50.0 00.0 00.0.
+  </p>
+
+  <footer>
+    <div>Created by R23</div>
+    <div>2025</div>
+  </footer>
+
+  <script>
+    /* ---- Clock logic ---- */
+    let showSeconds = true;
+    let showReal = false;
+    let showBars = false;
+    let glowOn = false;
+    let selectedTZ = 'local'; // viewer's device timezone
+    let interval;
+
+    function normalizePct(v) {
+      const wrapped = ((v % 100) + 100) % 100;
+      const floored = Math.floor(wrapped * 10) / 10;
+      return floored;
+    }
+    function formatValue(v) {
+      const p = normalizePct(v);
+      return p.toFixed(1).padStart(4, "0");
+    }
+
+    function getZonedParts(date, tz) {
+      if (tz === 'local') {
+        return {
+          hour: date.getHours(),
+          minute: date.getMinutes(),
+          second: date.getSeconds(),
+          ms: date.getMilliseconds()
+        };
+      }
+      const dtf = new Intl.DateTimeFormat('en-GB', {
+        hour12: false,
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      const parts = dtf.formatToParts(date);
+      const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+      return {
+        hour: parseInt(map.hour, 10),
+        minute: parseInt(map.minute, 10),
+        second: parseInt(map.second, 10),
+        ms: date.getMilliseconds() // same instant
+      };
+    }
+
+    function computePercentages(now, tz) {
+      const { hour, minute, second, ms } = getZonedParts(now, tz);
+      const totalSeconds = hour * 3600 + minute * 60 + second + ms / 1000;
+
+      const dayPctRaw    = (totalSeconds / 86400) * 100;                       // through day
+      const hourPctRaw   = ((minute * 60 + second + ms / 1000) / 3600) * 100;  // through hour
+      const minutePctRaw = ((second + ms / 1000) / 60) * 100;                  // through minute
+
+      return {
+        dayPct: normalizePct(dayPctRaw),
+        hourPct: normalizePct(hourPctRaw),
+        minutePct: normalizePct(minutePctRaw)
+      };
+    }
+
+    function buildUnit(value, barId, barsVisible) {
+      return `
+        <div class="unit-container">
+          <div class="unit">${value}</div>
+          ${barsVisible ? `
+            <div class="progress-bar">
+              <div id="${barId}" class="progress-fill"></div>
+            </div>
+          ` : ``}
+        </div>
+      `;
+    }
+
+    function renderPercentageClock(now) {
+      const { dayPct, hourPct, minutePct } = computePercentages(now, selectedTZ);
+      const dayTxt = formatValue(dayPct);
+      const hourTxt = formatValue(hourPct);
+      const minTxt = formatValue(minutePct);
+
+      let html = `
+        ${buildUnit(dayTxt, 'barDay', showBars)}
+        ${buildUnit(hourTxt, 'barHour', showBars)}
+      `;
+      if (showSeconds) {
+        html += buildUnit(minTxt, 'barMinute', showBars);
+      }
+      document.getElementById('clock').innerHTML = html;
+
+      if (showBars) {
+        const dayEl = document.getElementById('barDay');
+        const hourEl = document.getElementById('barHour');
+        const minEl = document.getElementById('barMinute');
+        if (dayEl) dayEl.style.width = `${dayPct}%`;
+        if (hourEl) hourEl.style.width = `${hourPct}%`;
+        if (showSeconds && minEl) minEl.style.width = `${minutePct}%`;
+      }
+
+      applyGlowState(); // ensure glow state is consistent after re-render
+    }
+
+    function renderRealClock(now) {
+      const realEl = document.getElementById('realClock');
+      if (!showReal) {
+        realEl.style.display = 'none';
+        return;
+      }
+      realEl.style.display = 'inline-flex';
+
+      const { hour, minute, second } = getZonedParts(now, selectedTZ);
+      const hh = String(hour).padStart(2, '0');
+      const mm = String(minute).padStart(2, '0');
+      const ss = String(second).padStart(2, '0');
+
+      let html = `
+        ${buildUnit(hh, 'barRealHour', false)}
+        ${buildUnit(mm, 'barRealMinute', false)}
+      `;
+      if (showSeconds) {
+        html += buildUnit(ss, 'barRealSecond', false);
+      }
+      realEl.innerHTML = html;
+
+      applyGlowState();
+    }
+
+    function updateClock() {
+      const now = new Date();
+      renderPercentageClock(now);
+      renderRealClock(now);
+    }
+
+    function startClock() {
+      updateClock();
+      interval = setInterval(updateClock, 100);
+    }
+
+    function setColor(color) {
+      document.documentElement.style.setProperty('--clock-color', color);
+    }
+
+    function nudgeSize(deltaEm) {
+      const current = getComputedStyle(document.documentElement)
+        .getPropertyValue('--clock-size').trim();
+      const val = parseFloat(current.replace('em', '')) || 3.5;
+      const next = Math.max(1.5, val + deltaEm); // prevent too tiny
+      document.documentElement.style.setProperty('--clock-size', `${next}em`);
+    }
+
+    function toggleSeconds() {
+      showSeconds = !showSeconds;
+      updateClock();
+    }
+
+    function toggleRealTime() {
+      showReal = !showReal;
+      updateClock();
+    }
+
+    function toggleBars() {
+      showBars = !showBars;
+      updateClock();
+    }
+
+    function toggleGlow() {
+      glowOn = !glowOn;
+      applyGlowState();
+    }
+
+    function setPulseSpeed(val) {
+      const seconds = `${val}s`;
+      document.documentElement.style.setProperty('--pulse-speed', seconds);
+      applyGlowState();
+    }
+
+    function applyGlowState() {
+      const clockEl = document.getElementById('clock');
+      const realEl = document.getElementById('realClock');
+
+      if (glowOn) {
+        clockEl.classList.add('pulsing');
+        if (realEl && realEl.style.display !== 'none') realEl.classList.add('pulsing');
+      } else {
+        clockEl.classList.remove('pulsing');
+        if (realEl) realEl.classList.remove('pulsing');
+      }
+    }
+
+    function setTimezone(tz) {
+      selectedTZ = tz; // 'local' or IANA TZ string
+      updateClock();
+    }
+
+    // Init
+    startClock();
+  </script>
+</body>
+</html>
