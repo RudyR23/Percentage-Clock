@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>The (True) Percentage Clock</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root {
       --clock-size: 3.5em;         /* start slightly larger */
@@ -86,6 +87,29 @@
       100% { box-shadow: 0 0 6px var(--clock-color), 0 0 12px var(--clock-color); }
     }
     .pulsing { animation: pulseGlow var(--pulse-speed) infinite; }
+    @media (max-width: 600px) {
+  :root {
+    --clock-size: 2em;       /* smaller digits */
+    --unit-padding-x: 6px;   /* tighter spacing */
+    --unit-padding-y: 4px;
+  }
+  h1 { font-size: 1.4rem; }
+  p.tagline { font-size: 0.9rem; }
+  .options, .timezone-options {
+    position: static;        /* stack below clock instead of floating */
+    transform: none;
+    max-width: 100%;
+    width: auto;
+    margin: 10px auto;
+    flex-direction: row;     /* put buttons side by side */
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .swatch-grid {
+    grid-template-columns: repeat(6, 1fr); /* more compact grid */
+  }
+}
+
   </style>
 </head>
 <body>
@@ -361,4 +385,5 @@ Each day starts at 00.0 00.0 00.0 and ends at 99.9 99.9 99.9.
   </script>
 </body>
 </html>
+
 
